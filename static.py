@@ -12,7 +12,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 
 import aetycoon
 
-
 HTTP_DATE_FMT = "%a, %d %b %Y %H:%M:%S GMT"
 
 class StaticContent(db.Model):
@@ -53,7 +52,7 @@ class StaticContentHandler(webapp.RequestHandler):
 			return
 		
 		serve = True
-		if 'If-Modified-Since' in self.required.headers:
+		if 'If-Modified-Since' in self.request.headers:
 			last_seen = datetime.datetime.strptime(
 				self.request.headers['If-Modified-Since'],
 				HTTP_DATE_FMT)
