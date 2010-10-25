@@ -1,14 +1,15 @@
-import sys
-import os
-import datetime
-import hashlib
+#!/usr/bin/env python
 
 from google.appengine.ext import db
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 
-sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
+import datetime
+import hashlib
+
+import fix_path
+import aetycoon
 
 import aetycoon
 
@@ -33,6 +34,13 @@ def set(path, body, content_type, **kwargs):
 	content.put()
 	return content
 		
+def add(path, body, content_type, **kwargs):
+  def _tx():
+    if StaticContent.get_by_key_name(path):
+      return None
+    return set(path, body, content_type, **kwargs)
+  return db.run_in_transaction(_tx)
+  
 class StaticContentHandler(webapp.RequestHandler):
 	def output_content(self, content, serve=True):
 		self.response.headers['Content-Type'] = content.content_type
