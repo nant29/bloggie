@@ -33,6 +33,8 @@ def render_template(template_name, template_vals=None, theme=None):
   return template.render(template_path, template_vals or {})
   
 class BlogPost(db.Model):
+  MIME_TYPE = "text/html; charset=utf-8"
+  
   path = db.StringProperty()
   title = db.StringProperty(required=True, indexed=False)
   body = db.TextProperty(required=True)
@@ -65,19 +67,48 @@ class PostForm(djangoforms.ModelForm):
     model = BlogPost
     exclude = ['path', 'published', 'updated']
     
-class PostHandler(webapp.RequestHandler):
+def with_post(fun):
+  def decorate(self, post_id=None):
+    post = None
+    if post_id:
+      post = BlogPost.get_by_id(int(post_id))
+      if not post:
+        self.error(404)
+        return
+    fun(self, post)
+  return decorate
+
+class BaseHandler(webapp.RequestHandler):
   def render_to_response(self, template_name, template_vals=None, theme=None):
     template_name = os.path.join("admin", template_name)
     self.response.out.write(render_template(template_name, template_vals, theme))
+
+class AdminHandler(BaseHandler):
+  def get(self):
+    offset = int(self.request.get('start', 0))
+    count = int(self.request.get('count', 20))
+    posts = BlogPost.all().order('-published').fetch(count, offset)
+    template_vals = {
+      'offset': offset,
+      'count': count,
+      'last_post': offset + len(posts) - 1,
+      'prev_offset': max(0, offset - count),
+      'next_offset': offset + count,
+      'posts': posts,
+    }
+    self.render_to_response("index.html", template_vals)
     
+class PostHandler(BaseHandler):    
   def render_form(self, form):
     self.render_to_response("edit.html", {'form': form})
-    
-  def get(self):
-    self.render_form(PostForm())
-    
-  def post(self):
-    form = PostForm(data=self.request.POST)
+   
+  @with_post 
+  def get(self, post):
+    self.render_form(PostForm(instance=post))
+
+  @with_post
+  def post(self, post):
+    form = PostForm(data=self.request.POST, instance=post)
     if form.is_valid():
       post = form.save(commit=False)
       post.publish()
@@ -86,7 +117,9 @@ class PostHandler(webapp.RequestHandler):
       self.render_form(form)
 
 application = webapp.WSGIApplication([
+  ('/admin/', AdminHandler),
   ('/admin/newpost', PostHandler),
+  ('/admin/post/(\d+)', PostHandler)
 ])
 
 def main():
