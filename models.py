@@ -27,15 +27,26 @@ class BlogPost(db.Model):
       return self.body
       
   def publish(self):
-    rendered = self.render()
     if not self.path:
       num = 0
       content = None
       while not content:
-        path = format_post_path(self, num)
-        content = static.add(path, rendered, "text/html")
+        path = utils.format_post_path(self, num)
+        content = static.add(path, '', config.html_mime_type)
         num += 1
-        self.path = path
-        self.put()
+      self.path = path
+    if not self.deps:
+      self.deps = {}
+    self.put()
+    for generator_class in generators.generator_list:
+      new_deps = set(generator_class.get_resource_list(self))
+      new_etag = generator_class.get_etag(self)
+      old_deps, old_etag = self.deps.get(generator_class.name(), (set(), None))
+      if new_etag != old_etag:
+        to_regenerate = new_deps | old_deps
       else:
-        static.set(self.path, rendered, "text/html")
+        to_regenerate = new_deps ^ old_deps
+      for dep in to_regenerate:
+        generator_class.generate_resource(self, dep)
+      self.deps[generator_class.name()] = (new_deps, new_etag)
+    self.put()
