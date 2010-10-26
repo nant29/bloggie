@@ -2,11 +2,11 @@
 {% block title %}{{config.blog_name}}{% endblock %}
 {% block body %}
   {% for post in posts %}
-    &lt;h2>&lt;a href="{{post.path}}">{{post.title}}&lt;/a>&lt;/h2>
+    <h2><a href="{{post.path}}">{{post.title}}</a></h2>
     {{post.summary|linebreaks}}
-    &lt;p class="postmeta">
-      &lt;a href="{{post.path}}" class="readmore">Read more&lt;/a> |
-      &lt;span class="date">{{post.published|date:"d F, Y"}}&lt;/span>
-    &lt;/p>
+    <p class="postmeta">
+      <a href="{{post.path}}" class="readmore">Read more</a> |
+      <span class="date">{{post.published|date:"d F, Y"}}</span>
+    </p>
   {% endfor %}
 {% endblock %}
